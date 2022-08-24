@@ -1,0 +1,139 @@
+# Object detection by YOLOv3
+
+```elixir
+# System.shell("chcp 65001")
+
+Mix.install([
+  {:nx, "~> 0.2.1"},
+  {:kino, "~> 0.6.2"},
+  {:tfl_interp, path: "../tfl_interp"},
+  {:cimg, "~> 0.1.13"}
+])
+```
+
+## 0.Original work
+
+"YOLO: Real-Time Object Detection"<br>
+
+* https://pjreddie.com/darknet/yolo/
+
+Việt Hùng "tensorflow-yolov4-tflite"<br>
+
+* https://github.com/hunglc007/tensorflow-yolov4-tflite
+
+***Thanks a lot!!!***
+
+---
+
+## Implementation for Elixir/Nerves using TflInterp
+
+## 1.Prepare the tflite model
+
+Use Việt's python script (URL above) to get the converted YOLOv3 tflite model from the Darknet model.
+You put the model into the livebook home directory.  And also you download the coco.label file and put it in the livebook directory.
+
+For your convenience, we have the models converted to tflite, coco labels, and photos for testing. You can download them to your Livebook home directory by running the cell below.
+
+```elixir
+# download tflite model, coco labels and a photo for test.
+File.mkdir("./data")
+
+[
+  "https://github.com/shoz-f/tinyML_livebook/releases/download/model/yolo3-416.tflite",
+  "https://github.com/shoz-f/onnx_livebook/releases/download/0.1.0/coco.label",
+  "https://github.com/shoz-f/onnx_livebook/releases/download/0.1.0/dog.jpg"
+]
+|> Enum.each(fn x ->
+  System.shell("wget -nc #{x}", cd: "./data")
+end)
+```
+
+## 2.Defining the inference module: Yolo3
+
+* Pre-processing:<br>
+  Resize the input image to the size of `@yolo3_shape` and create a Float32 binary sequence normalized to the range {0.0, 1.0}.
+
+* Post-processing:<br>
+  Apply NMS to bounding boxes and their scores to get inference results.
+
+```elixir
+defmodule Yolo3 do
+  # use TflInterp, model: Helper.model(), label: Helper.label()
+  use TflInterp, model: "./data/yolo3-416.tflite", label: "./data/coco.label"
+
+  @yolo3_shape {416, 416}
+
+  def apply(img) do
+    # preprocess
+    bin =
+      img
+      |> CImg.resize(@yolo3_shape)
+      |> CImg.to_binary(range: {0.0, 1.0})
+
+    # prediction
+    {boxes, scores} =
+      __MODULE__
+      |> TflInterp.set_input_tensor(0, bin)
+      |> TflInterp.invoke()
+      |> (&{
+            TflInterp.get_output_tensor(&1, 0),
+            TflInterp.get_output_tensor(&1, 1)
+          }).()
+
+    # postprocess
+    TflInterp.non_max_suppression_multi_class(
+      __MODULE__,
+      {div(byte_size(boxes), 4 * 4), 80},
+      boxes,
+      scores
+    )
+  end
+end
+```
+
+Launch `Yolo3`.
+
+```elixir
+Yolo3.start_link([])
+```
+
+Displays the properties of the `Yolo3` model.
+
+```elixir
+TflInterp.info(Yolo3)
+```
+
+## 3.Let's try it
+
+Prepare a BOX drawing function to show the position of the detected object.
+
+```elixir
+draw_object = fn builder, {name, boxes} ->
+  Enum.reduce(boxes, builder, fn [_score | box], canvas ->
+    [x0, y0, x1, y1] = Enum.map(box, fn x -> x / 416 end)
+
+    CImg.draw_rect(canvas, x0, y0, x1, y1, {255, 0, 0})
+    # |> CImg.draw_text(x0, y0 - 16, name, 16, :red)
+  end)
+end
+```
+
+Load the dog.jpg and run Yolo3 inference on it.
+
+```elixir
+img = CImg.load("./data/dog.jpg")
+
+with {:ok, res} <- Yolo3.apply(img) do
+  # draw result box
+  Enum.reduce(Map.to_list(res), CImg.builder(img), &draw_object.(&2, &1))
+  |> CImg.run()
+else
+  _ -> img
+end
+|> CImg.resize({640, 480})
+|> CImg.display_kino(:jpeg)
+```
+
+## 4.TIL ;-)
+
+&#9633;
