@@ -7,7 +7,7 @@ Mix.install([
   {:nx, "~> 0.2.1"},
   {:kino, "~> 0.6.2"},
   {:tfl_interp, path: "../tfl_interp"},
-  {:cimg, "~> 0.1.13"}
+  {:cimg, github: "shoz-f/cimg_ex"}
 ])
 ```
 
@@ -39,9 +39,9 @@ For your convenience, we have the models converted to tflite, coco labels, and p
 File.mkdir("./data")
 
 [
-  "https://github.com/shoz-f/tinyML_livebook/releases/download/model/yolo3-416.tflite",
-  "https://github.com/shoz-f/onnx_livebook/releases/download/0.1.0/coco.label",
-  "https://github.com/shoz-f/onnx_livebook/releases/download/0.1.0/dog.jpg"
+  "https://github.com/shoz-f/tfl_livebook/releases/download/0.0.1/yolov3-416.tflite",
+  "https://github.com/shoz-f/tfl_livebook/releases/download/0.0.1/coco.label",
+  "https://github.com/shoz-f/tfl_livebook/releases/download/0.0.1/dog.jpg"
 ]
 |> Enum.each(fn x ->
   System.shell("wget -nc #{x}", cd: "./data")
@@ -59,7 +59,7 @@ end)
 ```elixir
 defmodule Yolo3 do
   # use TflInterp, model: Helper.model(), label: Helper.label()
-  use TflInterp, model: "./data/yolo3-416.tflite", label: "./data/coco.label"
+  use TflInterp, model: "./data/yolov3-416.tflite", label: "./data/coco.label"
 
   @yolo3_shape {416, 416}
 
