@@ -34,10 +34,8 @@ File.mkdir("./data")
   "https://github.com/shoz-f/tfl_livebook/releases/download/0.0.1/vocab.txt"
 ]
 |> Enum.each(fn x ->
-  System.shell("wget -nc #{x}", cd: "./data")
+  System.shell("wget -nc --content-disposition #{x}", cd: "./data")
 end)
-
-File.rename!("./data/1@lite-format=tflite", "./data/mobilebert_1_default_1.tflite")
 ```
 
 ## 2.Defining companion modules
@@ -174,13 +172,13 @@ end
 defmodule MBertQA.Feature do
   @moduledoc """
   Feature converter for Tensorflow lite's mobileBert example.
-  
+
   Feature tensor[4][] is consisted of
     [0] list of tokens converted from query and contex text in the dictionary.
     [1] list of token masks. all are 1.
     [2] segment type indicator. 0 for query, 1 for context.
     [3] index of the token's position in the context map. see bellow.
-  
+
   Context map is a list of words separated from the context by whitespace.
   """
 
