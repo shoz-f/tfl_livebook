@@ -120,7 +120,7 @@ defmodule MBertQA.Tokenizer do
   defp wordpiece1(_, 0), do: {0, token("[UNK]")}
 
   defp wordpiece1(word, n) do
-    case lookup_a(String.slice(word, 0, n)) do
+    case lookup_1(String.slice(word, 0, n)) do
       {_piece, token} ->
         {n, token}
 
@@ -132,7 +132,7 @@ defmodule MBertQA.Tokenizer do
   defp wordpiece2(_, 0, tokens), do: [token("[UNK]") | tokens]
 
   defp wordpiece2(word, n, tokens) do
-    case lookup_b(String.slice(word, 0, n)) do
+    case lookup_2(String.slice(word, 0, n)) do
       {_piece, token} ->
         len = String.length(word) - n
 
@@ -147,8 +147,8 @@ defmodule MBertQA.Tokenizer do
     end
   end
 
-  defp lookup_a(x), do: lookup(@dic1, x)
-  defp lookup_b(x), do: lookup(@dic2, x)
+  defp lookup_1(x), do: lookup(@dic1, x)
+  defp lookup_2(x), do: lookup(@dic2, x)
   defp lookup(dic, x), do: List.first(:ets.lookup(dic, x))
 
   @doc """
@@ -280,6 +280,7 @@ defmodule MBertQA do
   Documentation for `MBertQA`.
   """
   use TflInterp, model: "data/mobilebert_1_default_1.tflite"
+  alias TflInterp, as: NNInterp
 
   alias MBertQA.Feature
 
@@ -297,14 +298,14 @@ defmodule MBertQA do
     # prediction
     mod =
       __MODULE__
-      |> TflInterp.set_input_tensor(0, Nx.to_binary(feature[0]))
-      |> TflInterp.set_input_tensor(1, Nx.to_binary(feature[1]))
-      |> TflInterp.set_input_tensor(2, Nx.to_binary(feature[2]))
-      |> TflInterp.invoke()
+      |> NNInterp.set_input_tensor(0, Nx.to_binary(feature[0]))
+      |> NNInterp.set_input_tensor(1, Nx.to_binary(feature[1]))
+      |> NNInterp.set_input_tensor(2, Nx.to_binary(feature[2]))
+      |> NNInterp.invoke()
 
     [end_logits, beg_logits] =
       Enum.map(0..1, fn x ->
-        TflInterp.get_output_tensor(mod, x)
+        NNInterp.get_output_tensor(mod, x)
         |> Nx.from_binary({:f, 32})
       end)
 

@@ -60,6 +60,7 @@ end)
 defmodule Yolo3 do
   # use TflInterp, model: Helper.model(), label: Helper.label()
   use TflInterp, model: "./data/yolov3-416.tflite", label: "./data/coco.label"
+  alias TflInterp, as: NNInterp
 
   @yolo3_shape {416, 416}
 
@@ -73,15 +74,15 @@ defmodule Yolo3 do
     # prediction
     {boxes, scores} =
       __MODULE__
-      |> TflInterp.set_input_tensor(0, bin)
-      |> TflInterp.invoke()
+      |> NNInterp.set_input_tensor(0, bin)
+      |> NNInterp.invoke()
       |> (&{
-            TflInterp.get_output_tensor(&1, 0),
-            TflInterp.get_output_tensor(&1, 1)
+            NNInterp.get_output_tensor(&1, 0),
+            NNInterp.get_output_tensor(&1, 1)
           }).()
 
     # postprocess
-    TflInterp.non_max_suppression_multi_class(
+    NNInterp.non_max_suppression_multi_class(
       __MODULE__,
       {div(byte_size(boxes), 4 * 4), 80},
       boxes,
@@ -126,7 +127,6 @@ img = CImg.load("./data/dog.jpg")
 with {:ok, res} <- Yolo3.apply(img) do
   # draw result box
   Enum.reduce(Map.to_list(res), CImg.builder(img), &draw_object.(&2, &1))
-  |> CImg.run()
 else
   _ -> img
 end
